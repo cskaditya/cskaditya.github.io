@@ -1,203 +1,143 @@
-<!DOCTYPE html>
+<!DOCTYPE1 html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ruang Virtual 3D WebXR - A-Frame</title>
-    <!-- Library A-Frame versi 1.4.2 -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- Component Environment/Grid A-Frame (Opsional / Custom Shader/Grid) -->
+    <title>Ruang Belajar WebXR: Organ Pencernaan</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #101014;
+            color: #ffffff;
         }
-        #info-overlay {
+        #info-panel {
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(15, 23, 42, 0.85);
-            color: #f8fafc;
-            padding: 16px 20px;
+            width: 320px;
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            max-width: 320px;
-            backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            pointer-events: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            pointer-events: auto;
         }
-        #info-overlay h1 {
-            font-size: 1.1rem;
-            margin: 0 0 8px 0;
-            color: #38bdf8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        #info-panel h2 {
+            margin-top: 0;
+            color: #4da6ff;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
         }
-        #info-overlay p {
-            font-size: 0.875rem;
-            margin: 0;
-            line-height: 1.4;
-            color: #cbd5e1;
+        #info-panel p {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #d0d0d0;
+        }
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        /* Style kustom untuk tombol VR Three.js */
+        #VRButton {
+            border-radius: 20px !important;
+            font-weight: bold !important;
+            background: #4da6ff !important;
+            color: #101014 !important;
+            border: none !important;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js"></script>
 </head>
 <body>
 
-    <!-- Overlay Petunjuk Penggunaan -->
-    <div id="info-overlay">
-        <h1>WebXR 3D Space</h1>
-        <p>Arahkan kursor / reticle (titik tengah) ke objek 3D (Kubus atau Bola) dan <strong>klik</strong> untuk mengubah warna interaktif!</p>
+    <div id="info-panel">
+        <h2 id="organ-title">Pilih Organ Pencernaan</h2>
+        <p id="organ-desc">Arahkan kursor / kontroler VR lalu klik pada organ tubuh untuk melihat nama dan fungsinya secara detail.</p>
     </div>
 
-    <!-- Skrip Komponen Custom A-Frame untuk Interaksi Klik / Ubah Warna -->
+    <div id="controls-hint">
+        🎮 <b>Kontrol Non-VR:</b> Klik Kiri + Drag (Rotasi), Klik Kanan (Pan), Scroll (Zoom), Klik Organ (Informasi).<br>
+        🥽 <b>Kontrol VR:</b> Gunakan Trigger pada Controller untuk menunjuk & memilih organ.
+    </div>
+
     <script>
-        AFRAME.registerComponent('color-changer', {
-            init: function () {
-                var el = this.el;
-                // Daftar warna acak yang estetik
-                var colors = [
-                    '#EF4444', '#F59E0B', '#10B981', '#3B82F6', 
-                    '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'
-                ];
+        // --- 1. SET UP SCENE, CAMERA, & RENDERER ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121218);
+        scene.fog = new THREE.FogExp2(0x121218, 0.15);
 
-                el.addEventListener('click', function () {
-                    var currentColor = el.getAttribute('material').color;
-                    var nextColor = colors[Math.floor(Math.random() * colors.length)];
-                    // Pastikan warna baru tidak sama persis dengan warna saat ini
-                    while (nextColor === currentColor) {
-                        nextColor = colors[Math.floor(Math.random() * colors.length)];
-                    }
-                    
-                    // Setel warna baru dengan animasi halus jika diinginkan
-                    el.setAttribute('animation', {
-                        property: 'components.material.material.color',
-                        type: 'color',
-                        to: nextColor,
-                        dur: 400,
-                        easing: 'easeOutQuad'
-                    });
-                });
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 1.3, 1.8);
 
-                // Efek Hover (MouseEnter & MouseLeave)
-                el.addEventListener('mouseenter', function () {
-                    el.setAttribute('scale', {x: 1.1, y: 1.1, z: 1.1});
-                });
-                el.addEventListener('mouseleave', function () {
-                    el.setAttribute('scale', {x: 1.0, y: 1.0, z: 1.0});
-                });
-            }
-        });
-    </script>
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.xr.enabled = true; // Aktifkan WebXR API
+        document.body.appendChild(renderer.domElement);
 
-    <!-- Canvas Scene A-Frame WebXR -->
-    <a-scene webxr="optionalFeatures: hit-test, local-floor">
-        
-        <!-- Asset Management -->
-        <a-assets>
-            <!-- Tekstur / Material Opsional -->
-        </a-assets>
+        // Tambahkan Tombol VR bawaan Three.js
+        document.body.appendChild(VRButton.createButton(renderer));
 
-        <!-- Langit & Pencahayaan Lingkungan -->
-        <a-sky color="#0f172a"></a-sky>
+        // OrbitControls untuk mode Desktop/Mouse
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1.2, 0);
+        controls.enableDamping = true;
+        controls.update();
 
-        <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="0.8" position="-1 4 2" cast-shadow="true"></a-light>
+        // --- 2. PENCAHAYAAN (LIGHTING) ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
 
-        <!-- Lantai Grid (Menggunakan Plane + Grid Material Pattern) -->
-        <a-plane 
-            position="0 0 0" 
-            rotation="-90 0 0" 
-            width="50" 
-            height="50" 
-            color="#1e293b" 
-            material="roughness: 0.8; metalness: 0.2;">
-        </a-plane>
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(2, 4, 2);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
 
-        <!-- Garis Grid Visual -->
-        <a-entity 
-            position="0 0.01 0" 
-            rotation="-90 0 0" 
-            geometry="primitive: plane; width: 40; height: 40" 
-            material="src: data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='none'/><path d='M 100 0 L 0 0 0 100' fill='none' stroke='%23334155' stroke-width='1'/></svg>; repeat: 40 40; transparent: true; opacity: 0.7">
-        </a-entity>
+        const pointLight = new THREE.PointLight(0x4da6ff, 0.5, 5);
+        pointLight.position.set(0, 1.5, 0);
+        scene.add(pointLight);
 
-        <!-- Objek-Objek 3D Interaktif -->
-        
-        <!-- Kubus Left -->
-        <a-box 
-            position="-2 1 -4" 
-            rotation="0 45 0" 
-            color="#3B82F6" 
-            depth="1" height="1" width="1"
-            shadow
-            color-changer
-            animation="property: rotation; to: 0 405 0; loop: true; dur: 12000; easing: linear">
-        </a-box>
+        // --- 3. LINGKUNGAN RUANG BELAJAR (ENVIRONMENT) ---
+        const floorGeo = new THREE.PlaneGeometry(10, 10);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e1e24, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
 
-        <!-- Bola Center -->
-        <a-sphere 
-            position="0 1.25 -5" 
-            radius="1.25" 
-            color="#EF4444" 
-            shadow
-            color-changer
-            animation="property: position; to: 0 1.6 -5; dir: alternate; loop: true; dur: 2000; easing: sineInOut">
-        </a-sphere>
+        const grid = new THREE.GridHelper(10, 20, 0x4da6ff, 0x333333);
+        grid.position.y = 0.01;
+        scene.add(grid);
 
-        <!-- Kubus Right -->
-        <a-box 
-            position="2.2 0.8 -3.5" 
-            rotation="15 30 0" 
-            color="#10B981" 
-            depth="0.9" height="0.9" width="0.9"
-            shadow
-            color-changer>
-        </a-box>
+        // Stand Pedestal Organ
+        const pedestalGeo = new THREE.CylinderGeometry(0.4, 0.5, 0.6, 32);
+        const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x2a2a35, metalness: 0.5 });
+        const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
+        pedestal.position.set(0, 0.3, 0);
+        pedestal.receiveShadow = true;
+        scene.add(pedestal);
 
-        <!-- Silinder Tambahan (Objek Pelengkap) -->
-        <a-cylinder 
-            position="-3.5 0.75 -3" 
-            radius="0.5" 
-            height="1.5" 
-            color="#8B5CF6" 
-            shadow
-            color-changer>
-        </a-cylinder>
-
-        <!-- Torus (Cincin Melayang) -->
-        <a-torus 
-            position="0 3.5 -5" 
-            radius="1.8" 
-            radius-tubular="0.05" 
-            color="#38bdf8" 
-            animation="property: rotation; to: 360 360 0; loop: true; dur: 15000; easing: linear">
-        </a-torus>
-
-        <!-- Kamera & Rig Pengontrol VR Headset -->
-        <a-entity id="rig" position="0 0 0">
-            <a-camera id="camera" look-controls wasd-controls position="0 1.6 0">
-                <!-- Cursor / Reticle untuk Interaksi Klik di Non-VR & VR Headset -->
-                <a-cursor 
-                    id="cursor"
-                    animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"
-                    animation__fusing="property: fusing; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
-                    event-set__mouseenter="_event: mouseenter; color: #38bdf8"
-                    event-set__mouseleave="_event: mouseleave; color: #ffffff"
-                    fuse="false"
-                    material="color: #ffffff; shader: flat; opacity: 0.8"
-                    position="0 0 -1"
-                    geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025">
-                </a-cursor>
-            </a-camera>
-
-            <!-- Pengontrol Tangan (Hand Controllers) untuk VR Headset (Oculus Quest, HTC Vive, dll) -->
-            <a-entity laser-controls="hand: left" raycaster="objects: [color-changer]; far: 20"></a-entity>
-            <a-entity laser-controls="hand: right" raycaster="objects: [color-changer]; far: 20"></a-entity>
-        </a-entity>
-
-    </a-scene>
-
-</body>
-</html>
+        // --- 4. DATA ORGAN PENCERNAAN & MODEL PROSEDURAL ---
+        const organData = [
+            {
+                name: "Mulut & Kerongkongan (Esofagus)",
+                desc: "Mulut melakukan pencernaan mekanis (gigi) dan kimiawi (enzim ptialin). Makanan kemudian disalurkan ke lambung melalui esofagus dengan gerakan peristaltik.",
+                color: 0xe06666,
+                createGeo: () => {
+                    const group = new THREE.Group();
+                    const geo = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16);
+                    const mat = new THREE.MeshStandardMaterial({ color:
