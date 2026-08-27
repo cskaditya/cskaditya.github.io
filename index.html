@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruang Virtual 3D WebXR - A-Frame</title>
+    <!-- Library A-Frame versi 1.4.2 -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <!-- Component Environment/Grid A-Frame (Opsional / Custom Shader/Grid) -->
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            color: #f8fafc;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-width: 320px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+        }
+        #info-overlay h1 {
+            font-size: 1.1rem;
+            margin: 0 0 8px 0;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        #info-overlay p {
+            font-size: 0.875rem;
+            margin: 0;
+            line-height: 1.4;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Overlay Petunjuk Penggunaan -->
+    <div id="info-overlay">
+        <h1>WebXR 3D Space</h1>
+        <p>Arahkan kursor / reticle (titik tengah) ke objek 3D (Kubus atau Bola) dan <strong>klik</strong> untuk mengubah warna interaktif!</p>
+    </div>
+
+    <!-- Skrip Komponen Custom A-Frame untuk Interaksi Klik / Ubah Warna -->
+    <script>
+        AFRAME.registerComponent('color-changer', {
+            init: function () {
+                var el = this.el;
+                // Daftar warna acak yang estetik
+                var colors = [
+                    '#EF4444', '#F59E0B', '#10B981', '#3B82F6', 
+                    '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'
+                ];
+
+                el.addEventListener('click', function () {
+                    var currentColor = el.getAttribute('material').color;
+                    var nextColor = colors[Math.floor(Math.random() * colors.length)];
+                    // Pastikan warna baru tidak sama persis dengan warna saat ini
+                    while (nextColor === currentColor) {
+                        nextColor = colors[Math.floor(Math.random() * colors.length)];
+                    }
+                    
+                    // Setel warna baru dengan animasi halus jika diinginkan
+                    el.setAttribute('animation', {
+                        property: 'components.material.material.color',
+                        type: 'color',
+                        to: nextColor,
+                        dur: 400,
+                        easing: 'easeOutQuad'
+                    });
+                });
+
+                // Efek Hover (MouseEnter & MouseLeave)
+                el.addEventListener('mouseenter', function () {
+                    el.setAttribute('scale', {x: 1.1, y: 1.1, z: 1.1});
+                });
+                el.addEventListener('mouseleave', function () {
+                    el.setAttribute('scale', {x: 1.0, y: 1.0, z: 1.0});
+                });
+            }
+        });
+    </script>
+
+    <!-- Canvas Scene A-Frame WebXR -->
+    <a-scene webxr="optionalFeatures: hit-test, local-floor">
+        
+        <!-- Asset Management -->
+        <a-assets>
+            <!-- Tekstur / Material Opsional -->
+        </a-assets>
+
+        <!-- Langit & Pencahayaan Lingkungan -->
+        <a-sky color="#0f172a"></a-sky>
+
+        <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="0.8" position="-1 4 2" cast-shadow="true"></a-light>
+
+        <!-- Lantai Grid (Menggunakan Plane + Grid Material Pattern) -->
+        <a-plane 
+            position="0 0 0" 
+            rotation="-90 0 0" 
+            width="50" 
+            height="50" 
+            color="#1e293b" 
+            material="roughness: 0.8; metalness: 0.2;">
+        </a-plane>
+
+        <!-- Garis Grid Visual -->
+        <a-entity 
+            position="0 0.01 0" 
+            rotation="-90 0 0" 
+            geometry="primitive: plane; width: 40; height: 40" 
+            material="src: data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='none'/><path d='M 100 0 L 0 0 0 100' fill='none' stroke='%23334155' stroke-width='1'/></svg>; repeat: 40 40; transparent: true; opacity: 0.7">
+        </a-entity>
+
+        <!-- Objek-Objek 3D Interaktif -->
+        
+        <!-- Kubus Left -->
+        <a-box 
+            position="-2 1 -4" 
+            rotation="0 45 0" 
+            color="#3B82F6" 
+            depth="1" height="1" width="1"
+            shadow
+            color-changer
+            animation="property: rotation; to: 0 405 0; loop: true; dur: 12000; easing: linear">
+        </a-box>
+
+        <!-- Bola Center -->
+        <a-sphere 
+            position="0 1.25 -5" 
+            radius="1.25" 
+            color="#EF4444" 
+            shadow
+            color-changer
+            animation="property: position; to: 0 1.6 -5; dir: alternate; loop: true; dur: 2000; easing: sineInOut">
+        </a-sphere>
+
+        <!-- Kubus Right -->
+        <a-box 
+            position="2.2 0.8 -3.5" 
+            rotation="15 30 0" 
+            color="#10B981" 
+            depth="0.9" height="0.9" width="0.9"
+            shadow
+            color-changer>
+        </a-box>
+
+        <!-- Silinder Tambahan (Objek Pelengkap) -->
+        <a-cylinder 
+            position="-3.5 0.75 -3" 
+            radius="0.5" 
+            height="1.5" 
+            color="#8B5CF6" 
+            shadow
+            color-changer>
+        </a-cylinder>
+
+        <!-- Torus (Cincin Melayang) -->
+        <a-torus 
+            position="0 3.5 -5" 
+            radius="1.8" 
+            radius-tubular="0.05" 
+            color="#38bdf8" 
+            animation="property: rotation; to: 360 360 0; loop: true; dur: 15000; easing: linear">
+        </a-torus>
+
+        <!-- Kamera & Rig Pengontrol VR Headset -->
+        <a-entity id="rig" position="0 0 0">
+            <a-camera id="camera" look-controls wasd-controls position="0 1.6 0">
+                <!-- Cursor / Reticle untuk Interaksi Klik di Non-VR & VR Headset -->
+                <a-cursor 
+                    id="cursor"
+                    animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"
+                    animation__fusing="property: fusing; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
+                    event-set__mouseenter="_event: mouseenter; color: #38bdf8"
+                    event-set__mouseleave="_event: mouseleave; color: #ffffff"
+                    fuse="false"
+                    material="color: #ffffff; shader: flat; opacity: 0.8"
+                    position="0 0 -1"
+                    geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025">
+                </a-cursor>
+            </a-camera>
+
+            <!-- Pengontrol Tangan (Hand Controllers) untuk VR Headset (Oculus Quest, HTC Vive, dll) -->
+            <a-entity laser-controls="hand: left" raycaster="objects: [color-changer]; far: 20"></a-entity>
+            <a-entity laser-controls="hand: right" raycaster="objects: [color-changer]; far: 20"></a-entity>
+        </a-entity>
+
+    </a-scene>
+
+</body>
+</html>
